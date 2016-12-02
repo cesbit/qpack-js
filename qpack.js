@@ -42,6 +42,10 @@
                                 ((c & 0x0f) << 12 | (ua[pos++] & 0x3f) << 6
                                                   | (ua[pos++] & 0x3f)));
         }
+        if (pos > end) {
+            throw new Error(
+                'QPack unicode error found at position ' + pos.toString());
+        }
         return String.fromCharCode.apply(null, arr);
     }
 
