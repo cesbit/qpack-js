@@ -7,11 +7,18 @@
 
 (function () {
 
+    var QP_HOOK = 0x7c;
     var QP_DOUBLE = 0xec;
+
     var QP_RAW8 = 0xe4;
     var QP_RAW16 = 0xe5;
     var QP_RAW32 = 0xe6;
     var QP_RAW64 = 0xe7;
+
+    var QP_INT8 = 0xe8;
+    var QP_INT16 = 0xe9;
+    var QP_INT32 = 0xea;
+    var QP_INT64 = 0xeb;
 
     var QP_BOOL_TRUE = 0xf9;
     var QP_BOOL_FALSE = 0xfa;
@@ -143,91 +150,142 @@
         }
 
         if (type === 'number') {
-            if (obj !== obj) { // isNaN
+            if (obj !== obj) {
+                /*
+                 * Pack isNaN
+                 */
                 arr.push(
                     QP_DOUBLE,
-                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
-            } else if (obj === Infinity) {  // positive infinity
-                arr.push(
-                    QP_DOUBLE,
-                    0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-            } else if (Math.floor(obj) === obj) { // int or uint
-                if (obj < 0) {
-                    // int
-                    // if (mix >= -32) { // negative fixnum
-                    //     rv.push(0xe0 + mix + 32);
-                    // } else if (mix > -0x80) {
-                    //     rv.push(0xd0, mix + 0x100);
-                    // } else if (mix > -0x8000) {
-                    //     mix += 0x10000;
-                    //     rv.push(0xd1, mix >> 8, mix & 0xff);
-                    // } else if (mix > -0x80000000) {
-                    //     mix += 0x100000000;
-                    //     rv.push(0xd2, mix >>> 24, (mix >> 16) & 0xff,
-                    //                               (mix >>  8) & 0xff, mix & 0xff);
-                    // } else {
-                    //     high = Math.floor(mix / 0x100000000);
-                    //     low  = mix & 0xffffffff;
-                    //     rv.push(0xd3, (high >> 24) & 0xff, (high >> 16) & 0xff,
-                    //                   (high >>  8) & 0xff,         high & 0xff,
-                    //                   (low  >> 24) & 0xff, (low  >> 16) & 0xff,
-                    //                   (low  >>  8) & 0xff,          low & 0xff);
-                    // }
-                } else {
-                    // uint
-                    // if (mix < 0x80) {
-                    //     rv.push(mix); // positive fixnum
-                    // } else if (mix < 0x100) { // uint 8
-                    //     rv.push(0xcc, mix);
-                    // } else if (mix < 0x10000) { // uint 16
-                    //     rv.push(0xcd, mix >> 8, mix & 0xff);
-                    // } else if (mix < 0x100000000) { // uint 32
-                    //     rv.push(0xce, mix >>> 24, (mix >> 16) & 0xff,
-                    //                               (mix >>  8) & 0xff, mix & 0xff);
-                    // } else {
-                    //     high = Math.floor(mix / 0x100000000);
-                    //     low  = mix & 0xffffffff;
-                    //     rv.push(0xcf, (high >> 24) & 0xff, (high >> 16) & 0xff,
-                    //                   (high >>  8) & 0xff,         high & 0xff,
-                    //                   (low  >> 24) & 0xff, (low  >> 16) & 0xff,
-                    //                   (low  >>  8) & 0xff,          low & 0xff);
-                    // }
-                }
-            } else { // double
-                // THX!! @edvakf
-                // http://javascript.g.hatena.ne.jp/edvakf/20101128/1291000731
-                var sign = obj < 0;
-                if (sign) obj *= -1;
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x7f);
 
-                // add offset 1023 to ensure positive
-                // 0.6931471805599453 = Math.LN2;
-                var exp  = ((Math.log(obj) / 0.6931471805599453) + 1023) | 0;
+                return len + 9;
 
-                // shift 52 - (exp - 1023) bits to make integer part exactly 53 bits,
-                // then throw away trash less than decimal point
-                var frac = obj * Math.pow(2, 52 + 1023 - exp);
-
-                //  S+-Exp(11)--++-----------------Fraction(52bits)-----------------------+
-                //  ||          ||                                                        |
-                //  v+----------++--------------------------------------------------------+
-                //  00000000|00000000|00000000|00000000|00000000|00000000|00000000|00000000
-                //  6      5    55  4        4        3        2        1        8        0
-                //  3      6    21  8        0        2        4        6
-                //
-                //  +----------high(32bits)-----------+ +----------low(32bits)------------+
-                //  |                                 | |                                 |
-                //  +---------------------------------+ +---------------------------------+
-                //  3      2    21  1        8        0
-                //  1      4    09  6
-                var low  = frac & 0xffffffff;
-                if (sign) exp |= 0x800;
-                var high = ((frac / 0x100000000) & 0xfffff) | (exp << 20);
-
-                arr.push(0xcb, (high >> 24) & 0xff, (high >> 16) & 0xff,
-                              (high >>  8) & 0xff,  high        & 0xff,
-                              (low  >> 24) & 0xff, (low  >> 16) & 0xff,
-                              (low  >>  8) & 0xff,  low         & 0xff);
             }
+
+            if (obj === Infinity) {
+                /*
+                 * Pack positive Infinity
+                 */
+                arr.push(
+                    QP_DOUBLE,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x7f);
+
+                return len + 9;
+            }
+
+            if (obj === -Infinity) {
+                /*
+                 * Pack nagative Infinity
+                 */
+                arr.push(
+                    QP_DOUBLE,
+                    0xec, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0xff);
+
+                return len + 9;
+            }
+
+            if (obj === (obj | 0)) {
+                /*
+                 * Pack integer type. Note that in JavaScript values like
+                 * 1.0 are exactly the same as 1. There is no way to make
+                 * a difference between these two.
+                 */
+                if (obj >= 0 && obj < 64) {
+                    arr.push(obj);
+                    return len + 1;
+                }
+
+                if (obj >= -60 && obj < 0) {
+                    arr.push(63 - obj);
+                    return len + 1;
+                }
+
+                if (obj > -0x80 && obj < 0x80) {
+                    arr.push(QP_INT8, obj);
+                    return len + 2;
+                }
+
+                if (obj > -0x8000 && obj < 0x8000) {
+                    arr.push(
+                        QP_INT16,
+                        obj & 0xff,
+                        (obj >> 8) & 0xff);
+                    return len + 3;
+                }
+
+                if (obj > -0x80000000 && obj < 0x80000000) {
+                    arr.push(
+                        QP_INT32,
+                        obj & 0xff,
+                        (obj >> 8) & 0xff,
+                        (obj >> 16) & 0xff,
+                        (obj >> 24) & 0xff);
+                    return len + 5;
+                }
+
+                if (obj > -0x8000000000000000 && obj < 0x8000000000000000) {
+                    arr.push(
+                        QP_INT64,
+                        obj & 0xff,
+                        (obj >> 8) & 0xff,
+                        (obj >> 16) & 0xff,
+                        (obj >> 24) & 0xff,
+                        (obj >> 32) & 0xff,
+                        (obj >> 40) & 0xff,
+                        (obj >> 48) & 0xff,
+                        (obj >> 56) & 0xff);
+                    return len + 9;
+                }
+
+                throw new Error(
+                    'Qpack got an overflow error while encoding: ', obj);
+
+            }
+
+            /*
+             * Pack double type
+             * http://javascript.g.hatena.ne.jp/edvakf/20101128/1291000731
+             */
+            var sign, exp, frac, low, high;
+
+            sign = obj < 0;
+            if (sign) obj *= -1;
+
+            // add offset 1023 to ensure positive
+            // 0.6931471805599453 = Math.LN2;
+            exp  = ((Math.log(obj) / 0.6931471805599453) + 1023) | 0;
+
+            // shift 52 - (exp - 1023) bits to make integer part exactly 53 bits,
+            // then throw away trash less than decimal point
+            frac = obj * Math.pow(2, 52 + 1023 - exp);
+
+            //  S+-Exp(11)--++-----------------Fraction(52bits)-----------------------+
+            //  ||          ||                                                        |
+            //  v+----------++--------------------------------------------------------+
+            //  00000000|00000000|00000000|00000000|00000000|00000000|00000000|00000000
+            //  6      5    55  4        4        3        2        1        8        0
+            //  3      6    21  8        0        2        4        6
+            //
+            //  +----------high(32bits)-----------+ +----------low(32bits)------------+
+            //  |                                 | |                                 |
+            //  +---------------------------------+ +---------------------------------+
+            //  3      2    21  1        8        0
+            //  1      4    09  6
+            low = frac & 0xffffffff;
+            if (sign) exp |= 0x800;
+            high = ((frac / 0x100000000) & 0xfffff) | (exp << 20);
+
+            arr.push(QP_DOUBLE,
+                low & 0xff,
+                (low >> 8) & 0xff,
+                (low >> 16) & 0xff,
+                (low >> 24) & 0xff,
+                high & 0xff,
+                (high >> 8) & 0xff,
+                (high >> 16) & 0xff,
+                (high >> 24) & 0xff);
+
+            return len + 9;
         }
 
         if (Array.isArray(obj)) {
@@ -283,6 +341,153 @@
         throw new Error('QPack cannot encode type: ' + type);
     }
 
+    function _decode (unpacker) {
+        var arr, n, sign, exp, frac, pos, num, tp = unpacker.qp[unpacker.pos++];
+
+        if (tp < 0x40) {
+            return tp;
+        }
+
+        if (tp < 0x7c) {
+            return 63 - tp;
+        }
+
+        if (tp === QP_HOOK) {
+            return 0;   // reserverd for object hook.
+        }
+
+        if (tp < 0x80) {
+            return tp - 126;
+        }
+
+        if (tp < 0xe4) {
+            pos = unpacker.pos;
+            unpacker.pos += tp - 128;
+            return typedArrayToUnicodeString(unpacker.qp.slice(
+                pos,
+                unpacker.pos));
+        }
+
+        switch (tp) {
+            case 0xe4:
+                pos = unpacker.pos + 1;
+                unpacker.pos = pos + unpacker.qp[unpacker.pos];
+                return typedArrayToUnicodeString(unpacker.qp.slice(
+                    pos,
+                    unpacker.pos));
+            case 0xe5:
+                pos = unpacker.pos + 2;
+                unpacker.pos =
+                    pos +
+                    unpacker.qp[unpacker.pos] +
+                    (unpacker.qp[unpacker.pos + 1] << 8);
+                return typedArrayToUnicodeString(unpacker.qp.slice(
+                    pos,
+                    unpacker.pos));
+            case 0xe6:
+                pos = unpacker.pos + 4;
+                unpacker.pos =
+                    pos +
+                    unpacker.qp[unpacker.pos] +
+                    (unpacker.qp[unpacker.pos + 1] << 8),
+                    (unpacker.qp[unpacker.pos + 2] << 16),
+                    (unpacker.qp[unpacker.pos + 3] << 24);
+                return typedArrayToUnicodeString(unpacker.qp.slice(
+                    pos,
+                    unpacker.pos));
+            case 0xe7:
+                pos = unpacker.pos + 8;
+                unpacker.pos =
+                    pos +
+                    unpacker.qp[unpacker.pos] +
+                    (unpacker.qp[unpacker.pos + 1] << 8),
+                    (unpacker.qp[unpacker.pos + 2] << 16),
+                    (unpacker.qp[unpacker.pos + 3] << 24),
+                    (unpacker.qp[unpacker.pos + 4] << 32),
+                    (unpacker.qp[unpacker.pos + 5] << 40),
+                    (unpacker.qp[unpacker.pos + 6] << 48),
+                    (unpacker.qp[unpacker.pos + 7] << 56);
+                return typedArrayToUnicodeString(unpacker.qp.slice(
+                    pos,
+                    unpacker.pos));
+            case 0xe8:
+                num = unpacker.qp[unpacker.pos++]
+                return num < 0x80 ? num : num - 0x100;
+            case 0xe9:
+                num = unpacker.qp[unpacker.pos] +
+                        (unpacker.qp[++unpacker.pos] << 8);
+                return num < 0x8000 ? num : num - 0x10000;
+            case 0xea:
+                num = unpacker.qp[unpacker.pos] +
+                        (unpacker.qp[++unpacker.pos] << 8),
+                        (unpacker.qp[++unpacker.pos] << 16),
+                        (unpacker.qp[++unpacker.pos] << 24);
+                return num < 0x80000000 ? num : num - 0x100000000;
+            case 0xeb:
+                num = unpacker.qp[unpacker.pos] +
+                        (unpacker.qp[++unpacker.pos] << 8),
+                        (unpacker.qp[++unpacker.pos] << 16),
+                        (unpacker.qp[++unpacker.pos] << 24),
+                        (unpacker.qp[++unpacker.pos] << 32),
+                        (unpacker.qp[++unpacker.pos] << 40),
+                        (unpacker.qp[++unpacker.pos] << 48),
+                        (unpacker.qp[++unpacker.pos] << 56);
+                return num < 0x8000000000000000 ?
+                    num : num - 0x10000000000000000;
+            case 0xec: // QP_DOUBLE
+
+
+                num =
+                    unpacker.qp[unpacker.pos] +
+                    (unpacker.qp[++unpacker.pos] <<  8) +
+                    (unpacker.qp[++unpacker.pos] << 16) +
+                    (unpacker.qp[++unpacker.pos] << 24);
+
+                n =
+                    unpacker.qp[++unpacker.pos] +
+                    (unpacker.qp[++unpacker.pos] <<  8) +
+                    (unpacker.qp[++unpacker.pos] << 16) +
+                    (unpacker.qp[++unpacker.pos] << 24);
+
+                sign = n & 0x80000000;     // 1 bit
+                exp  = (n >> 20) & 0x7ff;  // 11 bits
+                frac =  n & 0xfffff;       // 52 bits - 32bits (high word)
+
+                if (!n || n === 0x80000000) { // 0.0 or -0.0
+                    unpacker.pos += 4;
+                    return 0;
+                }
+
+                if (exp === 0x7ff) { // NaN or Infinity
+                    unpacker.pos += 4;
+                    return frac ? NaN : (sign) ? -Infinity : Infinity;
+                }
+
+                return (sign ? -1 : 1) *
+                    ((frac | 0x100000) * Math.pow(2, exp - 1023 - 20)
+                    + num * Math.pow(2, exp - 1023 - 52));
+            case 0xed:
+            case 0xee:
+            case 0xef:
+            case 0xf0:
+            case 0xf1:
+            case 0xf2:
+                num = tp - 0xed;
+                arr = [];
+                for (n = 0; n < num; n++) {
+                    arr.push(_decode(unpacker));
+                }
+                return arr;
+            case 0xf2:
+            case 0xf3:
+            case 0xf4:
+            case 0xf5:
+            case 0xf6:
+            case 0xf7:
+        }
+
+    }
+
     var qpack = {
         encode: function (obj) {
             var arr = [];
@@ -304,8 +509,11 @@
             return buffer;
         },
         decode: function (qp) {
-            var obj = {};
-            return obj;
+            var unpacker = {
+                qp: qp,
+                pos: 0
+            };
+            return _decode(unpacker);
         }
     };
 

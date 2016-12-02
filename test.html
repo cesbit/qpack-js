@@ -4,9 +4,12 @@
 <script src="qpack.js"></script>
 <script>
 
-var a = ['Iris', 'Bla'];
+var a = [1,2,3];
+console.log(a);
 var qp = qpack.encode(a);
 console.log(qp);
+var unpacked = qpack.decode(qp);
+console.log(unpacked);
 
 </script>
 
