@@ -4,10 +4,13 @@
 <script src="qpack.js"></script>
 <script>
 
-var a = [1,2,3];
+var a = {"a": [[1480077900, 72.1], [1480080000, 72.1]]};
+// a = '-4';
 console.log(a);
 var qp = qpack.encode(a);
 console.log(qp);
+
+qp = new Uint8Array([244, 129, 97, 239, 239, 234, 76, 50, 56, 88, 236, 0, 0, 0, 0, 0, 0, 82, 64, 239, 234, 128, 58, 56, 88, 236, 0, 0, 0, 0, 0, 0, 82, 64]);
 var unpacked = qpack.decode(qp);
 console.log(unpacked);
 
