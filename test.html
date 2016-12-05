@@ -5,27 +5,13 @@
 <script>
 
 var source = {'Iris': [3, 7.5]};
-console.log(source);
+console.log('Source: ', source);
 
 var qp = qpack.encode(source);
+console.log('QPacked: ', qp);
 
-var json = JSON.stringify(source);
-var i, start, a, b;
-
-start = performance.now();
-for (i = 0; i < 1000; i++) {
-    a = qpack.decode(qp);
-}
-console.log('QPack: ', performance.now() - start, a);
-
-
-start = performance.now();
-for (i = 0; i < 1000; i++) {
-    b = JSON.parse(json);
-}
-console.log('JSon: ', performance.now() - start, b);
-
-
+var unpacked = qpack.decode(qp);
+console.log('Unpacked: ', unpacked);
 
 
 

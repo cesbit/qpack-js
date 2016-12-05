@@ -10,27 +10,7 @@
 
 (function () {
 
-    var QP_HOOK = 0x7c;
     var QP_DOUBLE = 0xec;
-
-    var QP_RAW8 = 0xe4;
-    var QP_RAW16 = 0xe5;
-    var QP_RAW32 = 0xe6;
-    var QP_RAW64 = 0xe7;
-
-    var QP_INT8 = 0xe8;
-    var QP_INT16 = 0xe9;
-    var QP_INT32 = 0xea;
-    var QP_INT64 = 0xeb;
-
-    var QP_BOOL_TRUE = 0xf9;
-    var QP_BOOL_FALSE = 0xfa;
-    var QP_NULL = 0xfb;
-
-    var QP_OPEN_ARRAY = 0xfc;
-    var QP_OPEN_MAP = 0xfd;
-    var QP_CLOSE_ARRAY = 0xfe;
-    var QP_CLOSE_MAP = 0xff;
 
     /*
      *  https://coolaj86.com/articles/
@@ -57,11 +37,11 @@
             type = typeof obj;
 
         if (obj === true) {
-            arr.push(QP_BOOL_TRUE);
+            arr.push(0xf9);
         } else if (obj === false) {
-            arr.push(QP_BOOL_FALSE);
+            arr.push(0xfa);
         } else if (obj === null) {
-            arr.push(QP_NULL);
+            arr.push(0xfb);
         } else if (type === 'string') {
             /* utf8 */
             tmp = [];
@@ -83,23 +63,23 @@
                 arr.push(0x80 + tmp.length);
             } else if (tmp.length < 0x100) {
                 arr.push(
-                    QP_RAW8,
+                    0xe4,
                     tmp.length);
             } else if (tmp.length < 0x10000) {
                 arr.push(
-                    QP_RAW16,
+                    0xe5,
                     tmp.length & 0xff,
                     (tmp.length >> 8) & 0xff);
             } else if (tmp.length < 0x100000000) {
                 arr.push(
-                    QP_RAW32,
+                    0xe6,
                     tmp.length & 0xff,
                     (tmp.length >> 8) & 0xff,
                     (tmp.length >> 16) & 0xff,
                     (tmp.length >> 24) & 0xff);
             } else if (tmp.length < 0x10000000000000000) {
                 arr.push(
-                    QP_RAW64,
+                    0xe7,
                     tmp.length & 0xff,
                     (tmp.length >> 8) & 0xff,
                     (tmp.length >> 16) & 0xff,
@@ -147,15 +127,15 @@
                 } else if (obj >= -60 && obj < 0) {
                     arr.push(63 - obj);
                 } else if (obj > -0x80 && obj < 0x80) {
-                    arr.push(QP_INT8, obj);
+                    arr.push(0xe8, obj);
                 } else if (obj > -0x8000 && obj < 0x8000) {
                     arr.push(
-                        QP_INT16,
+                        0xe9,
                         obj & 0xff,
                         (obj >> 8) & 0xff);
                 } else if (obj > -0x80000000 && obj < 0x80000000) {
                     arr.push(
-                        QP_INT32,
+                        0xea,
                         obj & 0xff,
                         (obj >> 8) & 0xff,
                         (obj >> 16) & 0xff,
@@ -163,7 +143,7 @@
                 } else if ( obj > -0x8000000000000000 &&
                             obj < 0x8000000000000000) {
                     arr.push(
-                        QP_INT64,
+                        0xeb,
                         obj & 0xff,
                         (obj >> 8) & 0xff,
                         (obj >> 16) & 0xff,
@@ -226,12 +206,12 @@
                     _encode(o, arr);
                 });
             } else {
-                arr.push(QP_OPEN_ARRAY);
+                arr.push(0xfc);
                 obj.forEach(function (o) {
                     _encode(o, arr);
                 });
 
-                arr.push(QP_CLOSE_ARRAY);
+                arr.push(0xfe);
             }
         } else if (type === 'object') {
             var keys = Object.keys(obj);
@@ -243,13 +223,13 @@
                     _encode(obj[key], arr);
                 });
             } else {
-                arr.push(QP_OPEN_MAP);
+                arr.push(0xfd);
                 keys.forEach(function (key) {
                     _encode(key, arr);
                     _encode(obj[key], arr);
                 });
 
-                arr.push(QP_CLOSE_MAP);
+                arr.push(0xff);
             }
         } else {
             throw new Error('QPack cannot encode type: ' + type.toString());
@@ -268,7 +248,7 @@
             return 63 - tp;
         }
 
-        if (tp === QP_HOOK) {
+        if (tp === 0x7c) {
             return 0;   // reserverd for object hook.
         }
 
@@ -393,16 +373,16 @@
                     obj[_decode(unpacker)] = _decode(unpacker);
                 }
                 return obj;
-            case 0xf9:  // QP_BOOL_TRUE
+            case 0xf9:
                 return true;
-            case 0xfa:  // QP_BOOL_FALSE
+            case 0xfa:
                 return false;
-            case 0xfb:  // QP_BOOL_NULL
+            case 0xfb:
                 return null;
             case 0xfc:
                 arr = [];
                 while ( unpacker.pos < unpacker.qp.byteLength &&
-                        unpacker.qp[unpacker.pos] !== QP_CLOSE_ARRAY) {
+                        unpacker.qp[unpacker.pos] !== 0xfe) {
                     arr.push(_decode(unpacker));
                 }
                 unpacker.pos++;
@@ -410,7 +390,7 @@
             case 0xfd:
                 obj = {};
                 while ( unpacker.pos < unpacker.qp.byteLength &&
-                        unpacker.qp[unpacker.pos] !== QP_CLOSE_MAP) {
+                        unpacker.qp[unpacker.pos] !== 0xff) {
                     obj[_decode(unpacker)] = _decode(unpacker);
                 }
                 unpacker.pos++;
@@ -423,10 +403,11 @@
     }
 
     var qpack = {
-        encode: function (obj) {
+        encode: function (obj, toString) {
             var arr = [];
             _encode(obj, arr);
-            return new Uint8Array(arr);
+            return (toString) ?
+                String.fromCharCode.apply(null, arr) : new Uint8Array(arr);
         },
         decode: function (qp) {
             var unpacker = {
