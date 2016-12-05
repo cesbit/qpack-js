@@ -1,9 +1,12 @@
-'use strict';
-
 /*
- * QPack packs and unpacks unsigned integers as little endian.
+ * QPack JavaScript (de)serializer.
  *
+ * Author: Jeroen van der Heijden
+ * Maintainer: jeroen@transceptor.technology
+ * Date: 2016-12-02
  */
+
+'use strict';
 
 (function () {
 
@@ -110,7 +113,6 @@
                         'String or bytes too long: ' +
                         obj.byteLength.toString());
             }
-
             Array.prototype.push.apply(arr, tmp);
         } else if (type === 'number') {
             if (obj !== obj) {
