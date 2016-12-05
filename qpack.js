@@ -18,6 +18,9 @@
                 String.fromCharCode.apply(null, arr) : new Uint8Array(arr);
         },
         decode: function (qp) {
+            if (typeof qp === 'string') {
+                qp = strToByteArray(qp);
+            }
             var unpacker = {
                 qp: qp,
                 pos: 0
@@ -27,6 +30,25 @@
     };
 
     window.qpack = qpack;
+
+    var bin2num = {};
+
+    (function () {
+        for (var i = 0; i < 0x100; ++i) {
+            bin2num[String.fromCharCode(i)] = i;
+        }
+    })();
+
+    function strToByteArray (str) {
+        var ua, i, arr = str.split('');
+        ua = new Uint8Array(arr.length);
+
+        for (i = 0; i < arr.length; i++) {
+            ua[i] = bin2num[arr[i]];
+        }
+
+        return ua;
+    }
 
     /*
      *  https://coolaj86.com/articles/

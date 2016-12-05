@@ -4,10 +4,10 @@
 <script src="qpack.js"></script>
 <script>
 
-var source = {'Iris': [3, 7.5]};
+var source = {'Iris': [3, 7.5, true, false, null, 8, 1234567890]};
 console.log('Source: ', source);
 
-var qp = qpack.encode(source);
+var qp = qpack.encode(source, true);
 console.log('QPacked: ', qp);
 
 var unpacked = qpack.decode(qp);
