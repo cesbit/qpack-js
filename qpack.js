@@ -10,7 +10,23 @@
 
 (function () {
 
-    var QP_DOUBLE = 0xec;
+    var qpack = {
+        encode: function (obj, toString) {
+            var arr = [];
+            _encode(obj, arr);
+            return (toString) ?
+                String.fromCharCode.apply(null, arr) : new Uint8Array(arr);
+        },
+        decode: function (qp) {
+            var unpacker = {
+                qp: qp,
+                pos: 0
+            };
+            return _decode(unpacker);
+        }
+    };
+
+    window.qpack = qpack;
 
     /*
      *  https://coolaj86.com/articles/
@@ -95,27 +111,12 @@
             }
             Array.prototype.push.apply(arr, tmp);
         } else if (type === 'number') {
-            if (obj !== obj) {
-                /*
-                 * Pack isNaN
-                 */
-                arr.push(
-                    QP_DOUBLE,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x7f);
+            if (obj !== obj) { // NaN
+                arr.push(0xec, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x7f);
             } else if (obj === Infinity) {
-                /*
-                 * Pack positive Infinity
-                 */
-                arr.push(
-                    QP_DOUBLE,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x7f);
+                arr.push(0xec, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x7f);
             } else if (obj === -Infinity) {
-                /*
-                 * Pack nagative Infinity
-                 */
-                arr.push(
-                    QP_DOUBLE,
-                    0xec, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0xff);
+                arr.push(0xec, 0xec, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0xff);
             } else if (obj === (obj | 0)) {
                 /*
                  * Pack integer type. Note that in JavaScript values like
@@ -189,7 +190,7 @@
                 if (sign) exp |= 0x800;
                 high = ((frac / 0x100000000) & 0xfffff) | (exp << 20);
 
-                arr.push(QP_DOUBLE,
+                arr.push(0xec,
                     low & 0xff,
                     (low >> 8) & 0xff,
                     (low >> 16) & 0xff,
@@ -321,7 +322,7 @@
                         (unpacker.qp[unpacker.pos++] << 56);
                 return num < 0x8000000000000000 ?
                     num : num - 0x10000000000000000;
-            case 0xec: // QP_DOUBLE
+            case 0xec: // double
                 num =
                     unpacker.qp[unpacker.pos++] +
                     (unpacker.qp[unpacker.pos++] <<  8) +
@@ -401,23 +402,5 @@
                     tp.toString());
         }
     }
-
-    var qpack = {
-        encode: function (obj, toString) {
-            var arr = [];
-            _encode(obj, arr);
-            return (toString) ?
-                String.fromCharCode.apply(null, arr) : new Uint8Array(arr);
-        },
-        decode: function (qp) {
-            var unpacker = {
-                qp: qp,
-                pos: 0
-            };
-            return _decode(unpacker);
-        }
-    };
-
-    window.qpack = qpack;
 
 })();
