@@ -8,7 +8,7 @@ Usage example:
 var iris = {
   name: 'Iris',
   age: 3
-}
+};
 
 // encode iris to a qp binary string
 var qp = qpack.encode(iris, true);
