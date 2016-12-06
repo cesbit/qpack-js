@@ -10,7 +10,7 @@ var iris = {
   age: 3
 };
 
-// encode iris to a qp binary string
+// encode iris to a binary string
 var qp = qpack.encode(iris, true);
 
 // decode qp binary string to JavaScript object.
