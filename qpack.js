@@ -143,7 +143,8 @@
                 /*
                  * Pack integer type. Note that in JavaScript values like
                  * 1.0 are exactly the same as 1. There is no way to make
-                 * a difference between these two.
+                 * a difference between these two. QPack stores integers
+                 * using little endian.
                  */
                 if (obj >= 0 && obj < 64) {
                     arr.push(obj);
