@@ -5,16 +5,16 @@ Library for encoding and decoding QPack data using pure JavaScript.
 
 Usage example:
 ```javascript
-var data = {
+var iris = {
   name: 'Iris',
   age: 3
 }
 
 // encode iris to a qp binary string
-var qp = qpack.encode(data, true);
+var qp = qpack.encode(iris, true);
 
 // decode qp binary string to JavaScript object.
-var iris = qp.decode(qp);
+var data = qp.decode(qp);
 
-console.log(iris); // {name: 'Iris', age: 3}
+console.log(data); // {name: 'Iris', age: 3}
 ```
