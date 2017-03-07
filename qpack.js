@@ -26,6 +26,11 @@
                 pos: 0
             };
             return _decode(unpacker);
+        },
+        double: function (f) {
+            return function (arr) {
+                _packDouble(f, arr)
+            };
         }
     };
 
@@ -70,9 +75,51 @@
         return String.fromCharCode.apply(null, arr);
     }
 
+    function _packDouble(obj, arr) {
+        /*
+        * Pack double type
+        * http://javascript.g.hatena.ne.jp/edvakf/20101128/1291000731
+        */
+        var high, low, exp, frac, sign = obj < 0;
+        if (sign) obj *= -1;
+
+        // add offset 1023 to ensure positive
+        // 0.6931471805599453 = Math.LN2;
+        exp  = ((Math.log(obj) / 0.6931471805599453) + 1023) | 0;
+
+        // shift 52 - (exp - 1023) bits to make integer part exactly
+        // 53 bits, then throw away trash less than decimal point
+        frac = obj * Math.pow(2, 52 + 1023 - exp);
+
+        //  S+-Exp(11)--++-----------------Fraction(52bits)-----------------------+
+        //  ||          ||                                                        |
+        //  v+----------++--------------------------------------------------------+
+        //  00000000|00000000|00000000|00000000|00000000|00000000|00000000|00000000
+        //  6      5    55  4        4        3        2        1        8        0
+        //  3      6    21  8        0        2        4        6
+        //
+        //  +----------high(32bits)-----------+ +----------low(32bits)------------+
+        //  |                                 | |                                 |
+        //  +---------------------------------+ +---------------------------------+
+        //  3      2    21  1        8        0
+        //  1      4    09  6
+        low = frac & 0xffffffff;
+        if (sign) exp |= 0x800;
+        high = ((frac / 0x100000000) & 0xfffff) | (exp << 20);
+
+        arr.push(0xec,
+            low & 0xff,
+            (low >> 8) & 0xff,
+            (low >> 16) & 0xff,
+            (low >> 24) & 0xff,
+            high & 0xff,
+            (high >> 8) & 0xff,
+            (high >> 16) & 0xff,
+            (high >> 24) & 0xff);
+    }
+
     function _encode (obj, arr) {
-        var tmp, i, c, sign, exp, frac, low, high,
-            type = typeof obj;
+        var tmp, i, c, type = typeof obj;
 
         if (obj === true) {
             arr.push(0xf9);
@@ -182,46 +229,7 @@
                         obj.toString());
                 }
             } else {
-                /*
-                 * Pack double type
-                 * http://javascript.g.hatena.ne.jp/edvakf/20101128/1291000731
-                 */
-                sign = obj < 0;
-                if (sign) obj *= -1;
-
-                // add offset 1023 to ensure positive
-                // 0.6931471805599453 = Math.LN2;
-                exp  = ((Math.log(obj) / 0.6931471805599453) + 1023) | 0;
-
-                // shift 52 - (exp - 1023) bits to make integer part exactly
-                // 53 bits, then throw away trash less than decimal point
-                frac = obj * Math.pow(2, 52 + 1023 - exp);
-
-                //  S+-Exp(11)--++-----------------Fraction(52bits)-----------------------+
-                //  ||          ||                                                        |
-                //  v+----------++--------------------------------------------------------+
-                //  00000000|00000000|00000000|00000000|00000000|00000000|00000000|00000000
-                //  6      5    55  4        4        3        2        1        8        0
-                //  3      6    21  8        0        2        4        6
-                //
-                //  +----------high(32bits)-----------+ +----------low(32bits)------------+
-                //  |                                 | |                                 |
-                //  +---------------------------------+ +---------------------------------+
-                //  3      2    21  1        8        0
-                //  1      4    09  6
-                low = frac & 0xffffffff;
-                if (sign) exp |= 0x800;
-                high = ((frac / 0x100000000) & 0xfffff) | (exp << 20);
-
-                arr.push(0xec,
-                    low & 0xff,
-                    (low >> 8) & 0xff,
-                    (low >> 16) & 0xff,
-                    (low >> 24) & 0xff,
-                    high & 0xff,
-                    (high >> 8) & 0xff,
-                    (high >> 16) & 0xff,
-                    (high >> 24) & 0xff);
+                _packDouble(obj, arr);
             }
         } else if (Array.isArray(obj)) {
             if (obj.length < 6) {
@@ -237,6 +245,8 @@
 
                 arr.push(0xfe);
             }
+        } else if (type === 'function') {
+            obj(arr);
         } else if (type === 'object') {
             var keys = Object.keys(obj);
 
