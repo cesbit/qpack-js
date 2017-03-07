@@ -24,12 +24,10 @@ console.log(data);  // {name: 'Iris', age: 3}
 Float problem
 -------------
 
-Since JavaScript has no explicit integer type, QPack cannot tell the difference
-between for example 1.0 and 1. By default 1.0 will be packed as integer so if you
-want to force packing as float, the function `qpack.double(f)` can be used.
+JavaScript has no integer type and therefore values like 1.0 and 1 are equal. QPack cannot known if such value should be packed as integer or as float. By default x.0 will be packed as integer x. Any other float like 1.2 will be packed as float. If you have a use case where you really want to pack a value as float it can be wrapped with the function `qpack.double(f)`.
 
 For example:
 ```javascript
 // This will pack 1.0 as a double (float) value.
-var qp = qpack.encode(qpack.double(1.0));
+var qp = qpack.encode(qpack.double(1.0), true);
 ```
